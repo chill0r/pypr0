@@ -78,34 +78,34 @@ class Manager(threading.Thread):
 
     def insert(self, *args):
         for i in range(0, len(args)):
-            type = args[i].__class__.__name__
-            if type == 'Post':
+            type_ = args[i].__class__.__name__
+            if type_ == 'Post':
                 self.insert_post(args[i])
-            elif type == 'Posts':
+            elif type_ == 'Posts':
                 self.insert_posts(args[i])
-            elif type == 'User':
+            elif type_ == 'User':
                 self.insert_user(args[i])
-            elif type == 'Comment':
+            elif type_ == 'Comment':
                 self.insert_comment(args[i])
-            elif type == "Comments":
+            elif type_ == "Comments":
                 self.insert_comments(args[i])
-            elif type == 'Tag':
+            elif type_ == 'Tag':
                 self.insert_tag(args[i])
-            elif type == "Tags":
+            elif type_ == "Tags":
                 self.insert_tags(args[i])
-            elif type == 'CommentAssignment':
+            elif type_ == 'CommentAssignment':
                 self.insert_comment_assignment(args[i])
-            elif type == 'CommentAssignments':
+            elif type_ == 'CommentAssignments':
                 self.insert_comment_assignments(args[i])
-            elif type == "TagAssignment":
+            elif type_ == "TagAssignment":
                 self.insert_tag_assignment(args[i])
-            elif type == "TagAssignments":
+            elif type_ == "TagAssignments":
                 self.insert_tag_assignments(args[i])
             else:
                 raise LookupError
 
     def insert_post(self, post):
-        statement = "insert into posts values(" + "".join(["?," for key, value in post.items()])[:-1] + ")"
+        statement = "insert into posts values(" + "".join(["?," for _, _ in post.items()])[:-1] + ")"
         data = [post["id"], post["user"], post["promoted"], post["up"], post["down"], post["created"], post["image"],
                 post["thumb"], post["fullsize"], post["width"], post["height"], post["audio"], post["source"],
                 post["flags"], post["userId"], post["mark"], post["gift"]]
@@ -116,13 +116,13 @@ class Manager(threading.Thread):
             self.insert_post(post)
 
     def insert_user(self, user):
-        statement = "insert into posts values(" + "".join(["?," for key, value in user.items()])[:-1] + ")"
+        statement = "insert into posts values(" + "".join(["?," for _, _ in user.items()])[:-1] + ")"
         data = [user["name"], user["id"], user["registered"], user["admin"], user["banned"], user["bannedUntil"],
                 user["mark"], user["score"], user["tags"], user["likes"], user["comments"], user["followers"]]
         self.sql_queue.put((statement, data, None))
 
     def insert_comment(self, comment):
-        statement = "insert into comments values(" + "".join(["?," for key, value in comment.items()])[:-1] + ")"
+        statement = "insert into comments values(" + "".join(["?," for _, _ in comment.items()])[:-1] + ")"
         data = [comment["id"], comment["content"], comment["name"], comment["parent"], comment["created"],
                 comment["up"], comment["down"], comment["confidence"], comment["mark"]]
         self.sql_queue.put((statement, data, None))
@@ -158,9 +158,9 @@ class Manager(threading.Thread):
         for tag_assignment in tag_assignments:
             self.insert_tag_assignment(tag_assignment)
 
-    def manual_command(self, statement, values=[], wait=False):
+    def manual_command(self, statement, values=None, wait=False):
         token = uuid.uuid4() if wait else None
-        self.sql_queue.put((statement, values, token))
+        self.sql_queue.put((statement, values or list(), token))
         delay = .001
 
         while wait:
