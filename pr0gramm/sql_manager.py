@@ -4,7 +4,7 @@ import threading
 import uuid
 from multiprocessing import JoinableQueue
 from time import sleep
-
+from .api import log
 
 class Manager(threading.Thread):
     def __init__(self, file_name, in_memory=False, sql_file=None):
@@ -181,6 +181,6 @@ class Manager(threading.Thread):
                     self.__results[token] = self.sql_cursor.fetchall()
                     self.sql_queue.task_done()
                 except Exception as e:
-                    print(str(e))
+                    log.debug(e)
         except EOFError:
             self.thread_running = False

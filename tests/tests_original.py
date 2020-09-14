@@ -1,16 +1,20 @@
 # coding=utf-8
-import unittest
 from os import remove
-from pr0gramm import *
 from time import sleep
-from pr0gramm.sql_manager import Manager
-from pr0gramm.api_exceptions import NotLoggedInException
+import unittest
 
+from pr0gramm import *
+from pr0gramm.api_exceptions import NotLoggedInException
+from pr0gramm.sql_manager import Manager
+
+
+api.log.setLevel(logging.DEBUG)
 
 class Pr0grammApiTests(unittest.TestCase):
     login = False
     USERNAME = ''
     PASSWORD = ''
+    
 
     def setUp(self):
         """
@@ -177,12 +181,12 @@ class Pr0grammApiTests(unittest.TestCase):
             '''
         self.test_posts = Posts(json_str=posts)
         self.test_post = self.test_posts[0]
-
         self.api = Api(self.USERNAME, self.PASSWORD, "./")
 
     def tearDown(self):
         try:
             remove("./cookie.json")
+            remove("./pr0gramm.db")
         except OSError:
             pass
 
@@ -235,11 +239,11 @@ class Pr0grammApiTests(unittest.TestCase):
         self.assertEqual(obj1, obj2)
 
     def test_json_to_post2(self):
-        json_str = '{"id":2532795,"promoted":0,"up":1,"down":0,"created":1525181290,' \
-                   '"image":"2018\/05\/01\/a0ef51790449af5f.mp4","thumb":"2018\/05\/01\/a0ef51790449af5f.jpg",' \
-                   '"fullsize":"","width":640,"height":426,"audio":true,' \
-                   '"source":"","flags":1,' \
-                   '"user":"virtuel","mark":0, "userId": 1, "gift": 0} '
+        json_str = r'{"id":2532795,"promoted":0,"up":1,"down":0,"created":1525181290,' \
+                   r'"image":"2018\/05\/01\/a0ef51790449af5f.mp4","thumb":"2018\/05\/01\/a0ef51790449af5f.jpg",' \
+                   r'"fullsize":"","width":640,"height":426,"audio":true,' \
+                   r'"source":"","flags":1,' \
+                   r'"user":"virtuel","mark":0, "userId": 1, "gift": 0} '
         test_post_2 = Post(json_str=json_str)
         test_json_str = test_post_2.to_json()
         obj1 = json.loads(test_json_str)
@@ -347,7 +351,7 @@ class Pr0grammApiTests(unittest.TestCase):
         manager.safe_to_disk()
         assert manager.manual_command("select * from posts;", wait=True)
         manager.safe_to_disk()
-        os.remove("pr0gramm.db")
+        remove("./pr0gramm.db")
 
     def test_db_tags(self):
         manager = Manager("pr0gramm.db")
@@ -357,7 +361,7 @@ class Pr0grammApiTests(unittest.TestCase):
         assert result[0][0] == 1
         assert result[0][1] == "schmuserkadser"
         manager.safe_to_disk()
-        os.remove("pr0gramm.db")
+        remove("./pr0gramm.db")
 
     def test_db_comments(self):
         manager = Manager("pr0gramm.db")
@@ -365,7 +369,7 @@ class Pr0grammApiTests(unittest.TestCase):
         manager.safe_to_disk()
         assert manager.manual_command("select * from comments;", wait=True)
         manager.safe_to_disk()
-        os.remove("pr0gramm.db")
+        remove("./pr0gramm.db")
 
     def test_items_by_tag_iterator(self):
         all_posts = Posts()
@@ -436,20 +440,16 @@ class Pr0grammApiTests(unittest.TestCase):
                     assert msg["id"] == 2091036
 
     def test_post_insert(self):
+        try:
+            remove("./pr0gramm.db")
+        except FileNotFoundError:
+            pass
         post = Post(self.api.get_newest_image())
-
         manager = Manager("pr0gramm.db")
         manager.insert(post)
         manager.safe_to_disk()
         result = manager.manual_command("select count(*) from posts;", wait=True)
         assert result[0][0] == 1
-        os.remove("pr0gramm.db")
+        remove("./pr0gramm.db")
 
 
-if __name__ == '__main__':
-    # for testing with login call like: USERNAME="itssme" PASSWORD="1234" LOGIN="true" python3 tests.py
-    Pr0grammApiTests.login = os.environ.get('LOGIN', Pr0grammApiTests.login)
-    Pr0grammApiTests.USERNAME = os.environ.get('USERNAME', Pr0grammApiTests.USERNAME)
-    Pr0grammApiTests.PASSWORD = os.environ.get('PASSWORD', Pr0grammApiTests.PASSWORD)
-
-    unittest.main()

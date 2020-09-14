@@ -5,6 +5,10 @@ import webbrowser
 from requests import get, post, utils
 from pr0gramm.api_exceptions import NotLoggedInException, RateLimitReached
 from urllib import parse
+import logging
+from pr0gramm import __appname__
+
+log = logging.getLogger(__appname__)
 
 
 # TODO: implement logging
