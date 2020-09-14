@@ -7,6 +7,7 @@ from pr0gramm.api_exceptions import NotLoggedInException, RateLimitReached
 from urllib import parse
 import logging
 from pr0gramm import __appname__
+from http.cookiejar import LWPCookieJar
 
 log = logging.getLogger(__appname__)
 
@@ -96,6 +97,7 @@ class Tag(ApiItem):
 
 
 class TagAssignment:
+    
     def __init__(self, post, id, tag, confidence):
         """
         Links a tag to a post
@@ -119,22 +121,20 @@ class TagAssignment:
 
 
 class ApiList(list):
-    def __init__(self):
-        super(ApiList, self).__init__()
 
     def min(self, attr):
-        min = self[0][attr]
+        min_ = self[0][attr]
         for elem in self:
-            if min > elem[attr]:
-                min = elem[attr]
-        return min
+            if min_ > elem[attr]:
+                min_ = elem[attr]
+        return min_
 
     def max(self, attr):
-        max = self[0][attr]
+        max_ = self[0][attr]
         for elem in self:
-            if max < elem[attr]:
-                max = elem[attr]
-        return max
+            if max_ < elem[attr]:
+                max_ = elem[attr]
+        return max_
 
     def minId(self):
         return self.min("id")
@@ -167,10 +167,10 @@ class Posts(ApiList):
         return self.max("promoted")
 
     def sumPoints(self):
-        sum = 0
+        sum_ = 0
         for post in self:
-            sum += (post["up"] - post["down"])
-        return sum
+            sum_ += (post["up"] - post["down"])
+        return sum_
 
 
 class Comments(ApiList):
@@ -185,9 +185,7 @@ class Comments(ApiList):
                 self.append(Comment(json_obj=items[i]))
 
 
-class CommentAssignments(list):
-    def __init__(self):
-        super(CommentAssignments, self).__init__()
+class CommentAssignments(list): pass
 
 
 class Tags(ApiList):
@@ -202,16 +200,13 @@ class Tags(ApiList):
                 self.append(Tag(json_obj=items[i]))
 
 
-class TagAssignments(list):
-    def __init__(self):
-        super(TagAssignments, self).__init__()
-
+class TagAssignments(list): pass
 
 class Api:
     def __init__(self, username: str="", password: str="", tmp_dir: str="./"):
         self.__password = password
         self.__username = username
-        self.__login_cookie = None
+        self.__login_cookie = LWPCookieJar("pr0gramm.cookie")
         self.__current = -1
 
         self.tmp_dir = tmp_dir
@@ -326,6 +321,7 @@ class Api:
                 self.older = older
                 self.promoted = promoted
                 self.user = user
+                self.__current = None
 
             def __iter__(self):
                 if self.item == -1:
@@ -419,6 +415,7 @@ class Api:
                 self.newer = newer
                 self.promoted = promoted
                 self.user = user
+                self.__current = None
 
             def __iter__(self):
                 if older != -1:
@@ -534,6 +531,7 @@ class Api:
                 self.flag = flag
                 self.older = older
                 self.user = user
+                self.__current = None
 
             def __iter__(self):
                 if self.item is None:
@@ -638,6 +636,7 @@ class Api:
                 self.older = older
                 self.user = user
                 self.flag = flag
+                self.__current = None
 
             def __iter__(self):
                 if self.created == -1:
@@ -775,7 +774,7 @@ class Api:
         """
         if self.logged_in:
             nonce = json.loads(parse.unquote(self.__login_cookie["me"]))["id"][0:16]
-            r = post(self.api_url + "items/vote",
+            _ = post(self.api_url + "items/vote",
                      data={"id": id, "vote": vote, '_nonce': nonce},
                      cookies=self.__login_cookie)
             return True
@@ -801,7 +800,7 @@ class Api:
         """
         if self.logged_in:
             nonce = json.loads(parse.unquote(self.__login_cookie["me"]))["id"][0:16]
-            r = post(self.api_url + "comments/vote",
+            _ = post(self.api_url + "comments/vote",
                      data={"id": id, "vote": vote, '_nonce': nonce},
                      cookies=self.__login_cookie)
             return True
@@ -826,7 +825,7 @@ class Api:
         """
         if self.logged_in:
             nonce = json.loads(parse.unquote(self.__login_cookie["me"]))["id"][0:16]
-            r = post(self.api_url + "tags/vote",
+            _ = post(self.api_url + "tags/vote",
                      data={"id": id, "vote": vote, '_nonce': nonce},
                      cookies=self.__login_cookie)
             return True
@@ -845,23 +844,18 @@ class Api:
         """
 
         if self.__password != "" and self.__username != "":
-            cookie_path = os.path.join(self.tmp_dir, "cookie.json")
+            cookie_path = os.path.join(self.tmp_dir, "pr0gramm.cookie")
 
-            # TODO re-login after some time -> delete cookie
             if os.path.isfile(cookie_path):
-                print("already logged in via cookie -> reading file")
-                try:
-                    with open(cookie_path, "r") as tmp_file:
-                        self.__login_cookie = json.loads(tmp_file.read())
-                    self.logged_in = True
-                    return True
-                except IOError:
-                    print("Could not open cookie file %s", cookie_path)
-
+                log.info("already logged in via cookie -> reading file")
+                self.__login_cookie.load(cookie_path)
+                self.logged_in = True
+                return True
+            
             r = ""
             logged_in = False
             while not logged_in:
-                print("Trying to login in via request.")
+                log.info("Trying to login in via request.")
 
                 captcha_req = get(self.api_url + "user/captcha")
                 token = captcha_req.json()["token"]
@@ -870,18 +864,14 @@ class Api:
                 write_img.write(base64.b64decode(image))
                 write_img.close()
 
-                try:
-                    webbrowser.open("captcha.png")
-                    print("Your webbrowser or image viewer should open and display the image")
-                    print("write the correct content of the captcha into the command line:")
-                except:
-                    print("Could not open image through xdg-open")
-                    print("Open the image 'captcha.png' and write the correct content into the command line:")
-
+                webbrowser.open("captcha.png")
+                print("Your webbrowser or image viewer should open and display the image")
+                print("write the correct content of the captcha into the command line:")
+                
                 captcha = input("?: ")
 
                 r = post(self.login_url, data={'name': self.__username, 'password': self.__password,
-                                               'captcha': captcha, 'token': token})
+                                               'captcha': captcha, 'token': token}, cookies=self.__login_cookie)
 
                 if not r.json()["success"]:
                     print("There was an error logging in: " + str(r.json()["error"]))
@@ -895,19 +885,12 @@ class Api:
                 pass
 
             if r.json()['success']:
-                self.__login_cookie = r.cookies
-                try:
-                    with open(cookie_path, 'w') as temp_file:
-                        temp_file.write(json.dumps(utils.dict_from_cookiejar(r.cookies)))
-                except IOError:
-                    print('Could not write cookie file %s', cookie_path)
-                    self.logged_in = False
-                    return False
+                self.__login_cookie.save()
             else:
-                print('Login not possible.')
+                log.warning('Login not possible.')
                 self.logged_in = False
                 return False
 
-            print("Successfully logged in and written cookie file")
+            log.info("Successfully logged in and written cookie file")
             self.logged_in = True
             return True
