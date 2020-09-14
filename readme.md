@@ -1,3 +1,4 @@
+[![Build Status](https://travis-ci.com/chill0r/pypr0.svg?branch=master)](https://travis-ci.com/chill0r/pypr0)
 # Python api for pr0gramm.com
 
 ## Installation
